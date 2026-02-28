@@ -44,5 +44,6 @@ URL_BASE = "/movie-night"
 # Events
 EVENT_PLAYBACK_STARTED = f"{DOMAIN}_playback_started"
 
+
 # Platforms
 PLATFORMS = ["media_player", "sensor", "camera"]
