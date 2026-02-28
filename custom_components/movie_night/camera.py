@@ -15,7 +15,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import BACKDROP_SIZE_ORIGINAL, DOMAIN, POSTER_SIZE_LARGE
 from .coordinator import MovieNightCoordinator
 from .entity import MovieNightEntity
 from .image_generator import generate_idle_image, generate_poster
@@ -97,8 +97,8 @@ class MovieNightCamera(MovieNightEntity, Camera):
             genre_names = [g.get("name", "") for g in title.get("genres", [])]
         genres = ", ".join(genre_names)
 
-        poster_url = TMDBClient.poster_url(title.get("poster_path"))
-        backdrop_url = TMDBClient.backdrop_url(title.get("backdrop_path"))
+        poster_url = TMDBClient.poster_url(title.get("poster_path"), POSTER_SIZE_LARGE)
+        backdrop_url = TMDBClient.backdrop_url(title.get("backdrop_path"), BACKDROP_SIZE_ORIGINAL)
 
         try:
             self._cached_image = await generate_poster(

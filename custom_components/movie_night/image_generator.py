@@ -23,14 +23,12 @@ from .const import POSTER_HEIGHT, POSTER_WIDTH
 
 _LOGGER = logging.getLogger(__name__)
 
-# Layout constants
-POSTER_LEFT_MARGIN = 80
-POSTER_TOP_MARGIN = 120
-POSTER_DISPLAY_WIDTH = 400
-TEXT_LEFT = 540
-TEXT_TOP = 140
-BADGE_HEIGHT = 50
-BADGE_TOP = 40
+# Layout constants — sized for legibility on a 55" TV at 8–10 ft viewing distance
+POSTER_LEFT_MARGIN = 60
+POSTER_TOP_MARGIN = 130
+POSTER_DISPLAY_WIDTH = 460
+BADGE_HEIGHT = 60
+BADGE_TOP = 45
 
 
 def _load_default_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
@@ -76,11 +74,11 @@ def _generate_poster_image(
     canvas = Image.new("RGB", (POSTER_WIDTH, POSTER_HEIGHT), (15, 15, 15))
     draw = ImageDraw.Draw(canvas)
 
-    # Load fonts
-    font_title = _load_default_font(52)
-    font_meta = _load_default_font(28)
-    font_overview = _load_default_font(22)
-    font_badge = _load_default_font(24)
+    # Load fonts — large enough to read on a 55" TV from 8–10 ft
+    font_title = _load_default_font(76)
+    font_meta = _load_default_font(42)
+    font_overview = _load_default_font(32)
+    font_badge = _load_default_font(34)
 
     # Draw backdrop with dark overlay
     if backdrop:
@@ -103,14 +101,14 @@ def _generate_poster_image(
     # Draw "NOW PLAYING" badge
     badge_text = "NOW PLAYING"
     badge_bbox = draw.textbbox((0, 0), badge_text, font=font_badge)
-    badge_width = badge_bbox[2] - badge_bbox[0] + 40
+    badge_width = badge_bbox[2] - badge_bbox[0] + 50
     draw.rounded_rectangle(
         [POSTER_LEFT_MARGIN, BADGE_TOP, POSTER_LEFT_MARGIN + badge_width, BADGE_TOP + BADGE_HEIGHT],
-        radius=8,
+        radius=10,
         fill=(229, 9, 20),  # Netflix red
     )
     draw.text(
-        (POSTER_LEFT_MARGIN + 20, BADGE_TOP + 10),
+        (POSTER_LEFT_MARGIN + 25, BADGE_TOP + 11),
         badge_text,
         fill="white",
         font=font_badge,
@@ -125,60 +123,61 @@ def _generate_poster_image(
         # Add subtle shadow
         canvas.paste(poster_resized, (POSTER_LEFT_MARGIN, POSTER_TOP_MARGIN))
 
-    # Draw title
-    text_x = POSTER_LEFT_MARGIN + POSTER_DISPLAY_WIDTH + 60
+    # Draw title — text column starts after poster + generous gap
+    text_x = POSTER_LEFT_MARGIN + POSTER_DISPLAY_WIDTH + 70
     text_y = POSTER_TOP_MARGIN
+    text_max_width = POSTER_WIDTH - text_x - 60
 
     # Word-wrap title if too long
     _draw_wrapped_text(
         draw, title, font_title, text_x, text_y,
-        max_width=POSTER_WIDTH - text_x - 80,
+        max_width=text_max_width,
         fill="white",
-        line_spacing=10,
+        line_spacing=14,
     )
 
     # Calculate how many lines the title took
     title_lines = _count_wrapped_lines(
-        draw, title, font_title, POSTER_WIDTH - text_x - 80
+        draw, title, font_title, text_max_width
     )
     title_bbox = draw.textbbox((0, 0), "Ay", font=font_title)
-    title_line_height = title_bbox[3] - title_bbox[1] + 10
-    meta_y = text_y + title_lines * title_line_height + 20
+    title_line_height = title_bbox[3] - title_bbox[1] + 14
+    meta_y = text_y + title_lines * title_line_height + 28
 
     # Draw year and rating
     meta_parts = []
     if year:
         meta_parts.append(year)
     if rating is not None:
-        meta_parts.append(f"★ {rating:.1f}/10")
+        meta_parts.append(f"\u2605 {rating:.1f}/10")
     if meta_parts:
         draw.text(
             (text_x, meta_y),
-            "  •  ".join(meta_parts),
-            fill=(200, 200, 200),
+            "  \u2022  ".join(meta_parts),
+            fill=(210, 210, 210),
             font=font_meta,
         )
-        meta_y += 45
+        meta_y += 60
 
     # Draw genres
     if genres:
         draw.text(
             (text_x, meta_y),
             genres,
-            fill=(170, 170, 170),
+            fill=(180, 180, 180),
             font=font_meta,
         )
-        meta_y += 50
+        meta_y += 64
 
-    # Draw overview (truncated)
+    # Draw overview (truncated) — fewer chars since font is bigger
     if overview:
-        truncated = overview[:300] + ("..." if len(overview) > 300 else "")
+        truncated = overview[:220] + ("..." if len(overview) > 220 else "")
         _draw_wrapped_text(
             draw, truncated, font_overview, text_x, meta_y,
-            max_width=POSTER_WIDTH - text_x - 80,
-            fill=(150, 150, 150),
-            line_spacing=6,
-            max_lines=6,
+            max_width=text_max_width,
+            fill=(160, 160, 160),
+            line_spacing=10,
+            max_lines=5,
         )
 
     # Encode to PNG
@@ -296,8 +295,8 @@ def _generate_idle_image_sync() -> bytes:
     canvas = Image.new("RGB", (POSTER_WIDTH, POSTER_HEIGHT), (15, 15, 15))
     draw = ImageDraw.Draw(canvas)
 
-    font_title = _load_default_font(48)
-    font_sub = _load_default_font(24)
+    font_title = _load_default_font(72)
+    font_sub = _load_default_font(36)
 
     # Center text
     title = "Movie Night"
@@ -306,7 +305,7 @@ def _generate_idle_image_sync() -> bytes:
     title_bbox = draw.textbbox((0, 0), title, font=font_title)
     title_w = title_bbox[2] - title_bbox[0]
     draw.text(
-        ((POSTER_WIDTH - title_w) // 2, POSTER_HEIGHT // 2 - 50),
+        ((POSTER_WIDTH - title_w) // 2, POSTER_HEIGHT // 2 - 70),
         title,
         fill="white",
         font=font_title,
@@ -315,9 +314,9 @@ def _generate_idle_image_sync() -> bytes:
     sub_bbox = draw.textbbox((0, 0), subtitle, font=font_sub)
     sub_w = sub_bbox[2] - sub_bbox[0]
     draw.text(
-        ((POSTER_WIDTH - sub_w) // 2, POSTER_HEIGHT // 2 + 20),
+        ((POSTER_WIDTH - sub_w) // 2, POSTER_HEIGHT // 2 + 30),
         subtitle,
-        fill=(120, 120, 120),
+        fill=(130, 130, 130),
         font=font_sub,
     )
 
