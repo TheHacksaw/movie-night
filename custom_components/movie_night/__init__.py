@@ -272,9 +272,9 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
     hass.data[DOMAIN + "_frontend"] = True
 
     frontend_dir = Path(__file__).parent / "frontend"
-    _LOGGER.debug("Movie Night: registering frontend from %s", frontend_dir)
+    _LOGGER.info("Movie Night: registering frontend from %s", frontend_dir)
 
-    # Register static path (try new API, fall back to old)
+    # Register static path so HA serves the JS files
     try:
         from homeassistant.components.http import StaticPathConfig
 
@@ -283,21 +283,6 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
         )
     except (ImportError, AttributeError):
         hass.http.register_static_path(URL_BASE, str(frontend_dir), False)
-
-    # Register JS files so they load on every page
-    try:
-        from homeassistant.components.frontend import add_extra_js_url
-
-        add_extra_js_url(hass, f"{URL_BASE}/movie-night-poster.js")
-        add_extra_js_url(hass, f"{URL_BASE}/movie-night-browser.js")
-    except (ImportError, AttributeError):
-        _LOGGER.warning(
-            "Movie Night: Could not auto-register JS resources. "
-            "Add these as Lovelace resources manually (type: module): "
-            "%s/movie-night-poster.js and %s/movie-night-browser.js",
-            URL_BASE,
-            URL_BASE,
-        )
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
