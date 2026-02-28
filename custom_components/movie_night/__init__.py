@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any
 
 import voluptuous as vol
@@ -18,9 +19,9 @@ from .const import (
     CONF_APPLE_TV_ENTITY,
     DOMAIN,
     EVENT_PLAYBACK_STARTED,
+    URL_BASE,
 )
 from .coordinator import MovieNightCoordinator
-from .frontend import async_register_frontend
 from .tmdb_client import TMDBClient
 
 _LOGGER = logging.getLogger(__name__)
@@ -31,9 +32,6 @@ PLATFORMS = [Platform.MEDIA_PLAYER, Platform.SENSOR, Platform.CAMERA]
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Movie Night integration (services and frontend)."""
     hass.data.setdefault(DOMAIN, {})
-
-    # Register frontend static paths and Lovelace resources
-    await async_register_frontend(hass)
 
     # Services are registered here but require a config entry to function.
     # The handlers check for an active coordinator at runtime.
@@ -267,8 +265,45 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     return True
 
 
+async def _async_register_frontend(hass: HomeAssistant) -> None:
+    """Register frontend static paths and JS resources."""
+    if DOMAIN + "_frontend" in hass.data:
+        return
+    hass.data[DOMAIN + "_frontend"] = True
+
+    frontend_dir = Path(__file__).parent / "frontend"
+    _LOGGER.debug("Movie Night: registering frontend from %s", frontend_dir)
+
+    # Register static path (try new API, fall back to old)
+    try:
+        from homeassistant.components.http import StaticPathConfig
+
+        await hass.http.async_register_static_paths(
+            [StaticPathConfig(URL_BASE, str(frontend_dir), False)]
+        )
+    except (ImportError, AttributeError):
+        hass.http.register_static_path(URL_BASE, str(frontend_dir), False)
+
+    # Register JS files so they load on every page
+    try:
+        from homeassistant.components.frontend import add_extra_js_url
+
+        add_extra_js_url(hass, f"{URL_BASE}/movie-night-poster.js")
+        add_extra_js_url(hass, f"{URL_BASE}/movie-night-browser.js")
+    except (ImportError, AttributeError):
+        _LOGGER.warning(
+            "Movie Night: Could not auto-register JS resources. "
+            "Add these as Lovelace resources manually (type: module): "
+            "%s/movie-night-poster.js and %s/movie-night-browser.js",
+            URL_BASE,
+            URL_BASE,
+        )
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Movie Night from a config entry."""
+    await _async_register_frontend(hass)
+
     session = async_get_clientsession(hass)
     client = TMDBClient(session, entry.data[CONF_API_KEY])
 
