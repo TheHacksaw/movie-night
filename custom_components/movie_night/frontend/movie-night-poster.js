@@ -77,6 +77,26 @@ class MovieNightPosterCard extends HTMLElement {
           width: 100%;
           min-height: 400px;
           aspect-ratio: 16 / 9;
+          cursor: pointer;
+        }
+        .container:active {
+          opacity: 0.9;
+        }
+        .stop-hint {
+          position: absolute;
+          bottom: 16px;
+          right: 16px;
+          z-index: 2;
+          background: rgba(0,0,0,0.6);
+          color: #999;
+          font-size: 12px;
+          padding: 6px 12px;
+          border-radius: 6px;
+          opacity: 0;
+          transition: opacity 0.2s;
+        }
+        .container:hover .stop-hint {
+          opacity: 1;
         }
         .backdrop {
           position: absolute;
@@ -218,6 +238,14 @@ class MovieNightPosterCard extends HTMLElement {
 
       ${isPlaying ? this._renderPlaying(title, year, rating, genres, overview, posterUrl, backdropUrl) : this._renderIdle()}
     `;
+
+    // Attach tap-to-stop handler when playing
+    if (isPlaying) {
+      const container = this.shadowRoot.querySelector(".container");
+      if (container) {
+        container.addEventListener("click", () => this._stopMovieNight());
+      }
+    }
   }
 
   _renderPlaying(title, year, rating, genres, overview, posterUrl, backdropUrl) {
@@ -240,6 +268,7 @@ class MovieNightPosterCard extends HTMLElement {
             ${overview ? `<div class="overview">${this._escapeHtml(overview)}</div>` : ""}
           </div>
         </div>
+        <div class="stop-hint">Tap to stop Movie Night</div>
       </div>
     `;
   }
@@ -252,6 +281,15 @@ class MovieNightPosterCard extends HTMLElement {
         <div class="idle-sub">Select a movie or show to get started</div>
       </div>
     `;
+  }
+
+  _stopMovieNight() {
+    if (!this._hass) return;
+    const entityId = this._config.entity || this._findMovieNightEntity();
+    if (!entityId) return;
+    this._hass.callService("media_player", "turn_off", {
+      entity_id: entityId,
+    });
   }
 
   _escapeHtml(str) {
