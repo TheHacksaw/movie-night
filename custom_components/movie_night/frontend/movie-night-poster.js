@@ -55,9 +55,9 @@ class MovieNightPosterCard extends HTMLElement {
 
     const title = attrs.media_title || "";
     const year = attrs.year || "";
-    const rating = attrs.rating;
-    const genres = attrs.genres || "";
-    const overview = attrs.overview || "";
+    const rating = this._config.show_rating !== false ? attrs.rating : null;
+    const genres = this._config.show_genres !== false ? (attrs.genres || "") : "";
+    const overview = this._config.show_overview !== false ? (attrs.overview || "") : "";
     const posterUrl = attrs.poster_url || "";
     const backdropUrl = attrs.backdrop_url || "";
 
@@ -239,8 +239,8 @@ class MovieNightPosterCard extends HTMLElement {
       ${isPlaying ? this._renderPlaying(title, year, rating, genres, overview, posterUrl, backdropUrl) : this._renderIdle()}
     `;
 
-    // Attach tap-to-stop handler when playing
-    if (isPlaying) {
+    // Attach tap-to-stop handler when playing (if enabled)
+    if (isPlaying && this._config.tap_to_stop !== false) {
       const container = this.shadowRoot.querySelector(".container");
       if (container) {
         container.addEventListener("click", () => this._stopMovieNight());
@@ -320,3 +320,147 @@ window.customCards.push({
   description: "Displays the currently selected movie or show in a cinematic layout.",
   preview: true,
 });
+
+
+/* ───────────────────────────────────────────────
+ *  Visual Config Editor
+ * ─────────────────────────────────────────────── */
+class MovieNightPosterEditor extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: "open" });
+    this._config = {};
+    this._hass = null;
+  }
+
+  setConfig(config) {
+    this._config = { ...config };
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    // Re-render to give entity picker access to hass
+    const picker = this.shadowRoot && this.shadowRoot.querySelector("ha-entity-picker");
+    if (picker) picker.hass = hass;
+  }
+
+  _render() {
+    if (!this.shadowRoot) return;
+
+    const showOverview = this._config.show_overview !== false;
+    const showGenres = this._config.show_genres !== false;
+    const showRating = this._config.show_rating !== false;
+    const tapToStop = this._config.tap_to_stop !== false;
+
+    this.shadowRoot.innerHTML = `
+      <style>
+        .editor {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          padding: 16px 0;
+        }
+        .row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        .row label {
+          font-size: 14px;
+          font-weight: 500;
+        }
+        .row .secondary {
+          font-size: 12px;
+          color: var(--secondary-text-color, #888);
+        }
+        ha-entity-picker {
+          display: block;
+          width: 100%;
+        }
+        ha-switch {
+          --mdc-theme-secondary: var(--primary-color);
+        }
+      </style>
+      <div class="editor">
+
+        <ha-entity-picker
+          .hass=${this._hass}
+          .value="${this._config.entity || ""}"
+          .includeDomains=${["media_player"]}
+          label="Entity (auto-detected if empty)"
+          allow-custom-entity
+        ></ha-entity-picker>
+
+        <div class="row">
+          <div>
+            <label>Show overview</label><br/>
+            <span class="secondary">Display the synopsis text</span>
+          </div>
+          <ha-switch id="showOverview" ${showOverview ? "checked" : ""}></ha-switch>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Show genres</label><br/>
+            <span class="secondary">Display genre tags</span>
+          </div>
+          <ha-switch id="showGenres" ${showGenres ? "checked" : ""}></ha-switch>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Show rating</label><br/>
+            <span class="secondary">Display the TMDB star rating</span>
+          </div>
+          <ha-switch id="showRating" ${showRating ? "checked" : ""}></ha-switch>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Tap to stop</label><br/>
+            <span class="secondary">Tapping the poster ends Movie Night</span>
+          </div>
+          <ha-switch id="tapToStop" ${tapToStop ? "checked" : ""}></ha-switch>
+        </div>
+
+      </div>
+    `;
+
+    // Wire up entity picker
+    const picker = this.shadowRoot.querySelector("ha-entity-picker");
+    if (picker) {
+      picker.hass = this._hass;
+      picker.addEventListener("value-changed", (e) => {
+        this._updateConfig("entity", e.detail.value || "");
+      });
+    }
+
+    // Wire up toggles
+    this._wireSwitch("showOverview", "show_overview");
+    this._wireSwitch("showGenres", "show_genres");
+    this._wireSwitch("showRating", "show_rating");
+    this._wireSwitch("tapToStop", "tap_to_stop");
+  }
+
+  _wireSwitch(elementId, configKey) {
+    const sw = this.shadowRoot.getElementById(elementId);
+    if (sw) {
+      sw.addEventListener("change", (e) => {
+        this._updateConfig(configKey, e.target.checked);
+      });
+    }
+  }
+
+  _updateConfig(key, value) {
+    this._config = { ...this._config, [key]: value };
+    const event = new CustomEvent("config-changed", {
+      detail: { config: this._config },
+      bubbles: true,
+      composed: true,
+    });
+    this.dispatchEvent(event);
+  }
+}
+
+customElements.define("movie-night-poster-editor", MovieNightPosterEditor);

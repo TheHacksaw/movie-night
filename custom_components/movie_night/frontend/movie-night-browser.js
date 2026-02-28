@@ -293,16 +293,18 @@ class MovieNightBrowserCard extends HTMLElement {
       </style>
       <div class="header">
         <span class="header-title">Movie Night</span>
+        ${this._config.show_search !== false ? `
         <div class="search-box">
           <input type="text" id="searchInput" placeholder="Search movies & shows..." />
           <button class="search-btn" id="searchBtn">Search</button>
-        </div>
+        </div>` : ""}
       </div>
+      ${this._config.show_tabs !== false ? `
       <div class="tabs">
         <div class="tab active" data-tab="movies">Movies</div>
         <div class="tab" data-tab="tv">TV Shows</div>
         <div class="tab" data-tab="search">Search Results</div>
-      </div>
+      </div>` : ""}
       <div id="content">
         <div class="loading">Loading catalog</div>
       </div>
@@ -313,10 +315,14 @@ class MovieNightBrowserCard extends HTMLElement {
     const searchInput = this.shadowRoot.getElementById("searchInput");
     const searchBtn = this.shadowRoot.getElementById("searchBtn");
 
-    searchBtn.addEventListener("click", () => this._doSearch());
-    searchInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") this._doSearch();
-    });
+    if (searchBtn) {
+      searchBtn.addEventListener("click", () => this._doSearch());
+    }
+    if (searchInput) {
+      searchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") this._doSearch();
+      });
+    }
 
     this.shadowRoot.querySelectorAll(".tab").forEach((tab) => {
       tab.addEventListener("click", () => {
@@ -614,6 +620,10 @@ class MovieNightBrowserCard extends HTMLElement {
     return 8;
   }
 
+  static getConfigElement() {
+    return document.createElement("movie-night-browser-editor");
+  }
+
   static getStubConfig() {
     return { entity: "" };
   }
@@ -628,3 +638,126 @@ window.customCards.push({
   description: "Browse and search Netflix catalog with a poster grid.",
   preview: true,
 });
+
+
+/* ───────────────────────────────────────────────
+ *  Visual Config Editor
+ * ─────────────────────────────────────────────── */
+class MovieNightBrowserEditor extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: "open" });
+    this._config = {};
+    this._hass = null;
+  }
+
+  setConfig(config) {
+    this._config = { ...config };
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    const picker = this.shadowRoot && this.shadowRoot.querySelector("ha-entity-picker");
+    if (picker) picker.hass = hass;
+  }
+
+  _render() {
+    if (!this.shadowRoot) return;
+
+    const showSearch = this._config.show_search !== false;
+    const showTabs = this._config.show_tabs !== false;
+
+    this.shadowRoot.innerHTML = `
+      <style>
+        .editor {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          padding: 16px 0;
+        }
+        .row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        .row label {
+          font-size: 14px;
+          font-weight: 500;
+        }
+        .row .secondary {
+          font-size: 12px;
+          color: var(--secondary-text-color, #888);
+        }
+        ha-entity-picker {
+          display: block;
+          width: 100%;
+        }
+        ha-switch {
+          --mdc-theme-secondary: var(--primary-color);
+        }
+      </style>
+      <div class="editor">
+
+        <ha-entity-picker
+          .hass=${this._hass}
+          .value="${this._config.entity || ""}"
+          .includeDomains=${["media_player"]}
+          label="Entity (auto-detected if empty)"
+          allow-custom-entity
+        ></ha-entity-picker>
+
+        <div class="row">
+          <div>
+            <label>Show search bar</label><br/>
+            <span class="secondary">Display the search input</span>
+          </div>
+          <ha-switch id="showSearch" ${showSearch ? "checked" : ""}></ha-switch>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Show tabs</label><br/>
+            <span class="secondary">Show Movies / TV Shows / Search tabs</span>
+          </div>
+          <ha-switch id="showTabs" ${showTabs ? "checked" : ""}></ha-switch>
+        </div>
+
+      </div>
+    `;
+
+    // Wire up entity picker
+    const picker = this.shadowRoot.querySelector("ha-entity-picker");
+    if (picker) {
+      picker.hass = this._hass;
+      picker.addEventListener("value-changed", (e) => {
+        this._updateConfig("entity", e.detail.value || "");
+      });
+    }
+
+    // Wire up toggles
+    this._wireSwitch("showSearch", "show_search");
+    this._wireSwitch("showTabs", "show_tabs");
+  }
+
+  _wireSwitch(elementId, configKey) {
+    const sw = this.shadowRoot.getElementById(elementId);
+    if (sw) {
+      sw.addEventListener("change", (e) => {
+        this._updateConfig(configKey, e.target.checked);
+      });
+    }
+  }
+
+  _updateConfig(key, value) {
+    this._config = { ...this._config, [key]: value };
+    const event = new CustomEvent("config-changed", {
+      detail: { config: this._config },
+      bubbles: true,
+      composed: true,
+    });
+    this.dispatchEvent(event);
+  }
+}
+
+customElements.define("movie-night-browser-editor", MovieNightBrowserEditor);
