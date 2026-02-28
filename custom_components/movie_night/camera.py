@@ -8,6 +8,7 @@ Serves a composite "Now Playing" poster image that can be:
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from homeassistant.components.camera import Camera
 from homeassistant.config_entries import ConfigEntry
@@ -21,6 +22,9 @@ from .image_generator import generate_idle_image, generate_poster
 from .tmdb_client import TMDBClient
 
 _LOGGER = logging.getLogger(__name__)
+
+# File saved to /config/www/ so it's accessible at /local/ without auth
+PUBLIC_IMAGE_FILENAME = "movie_night_poster.png"
 
 
 async def async_setup_entry(
@@ -50,6 +54,11 @@ class MovieNightCamera(MovieNightEntity, Camera):
         self._cached_image: bytes | None = None
         self._cached_title_id: int | None = None
 
+        # Ensure /config/www/ exists for public image serving
+        self._www_dir = Path(hass.config.path("www"))
+        self._www_dir.mkdir(exist_ok=True)
+        self._public_image_path = self._www_dir / PUBLIC_IMAGE_FILENAME
+
     async def async_camera_image(
         self, width: int | None = None, height: int | None = None
     ) -> bytes | None:
@@ -62,6 +71,7 @@ class MovieNightCamera(MovieNightEntity, Camera):
                 return self._cached_image
             self._cached_image = await generate_idle_image(self._hass)
             self._cached_title_id = None
+            await self._save_public_image(self._cached_image)
             return self._cached_image
 
         # Check if we need to regenerate
@@ -107,7 +117,22 @@ class MovieNightCamera(MovieNightEntity, Camera):
             self._cached_image = await generate_idle_image(self._hass)
             self._cached_title_id = None
 
+        await self._save_public_image(self._cached_image)
         return self._cached_image
+
+    async def _save_public_image(self, image_data: bytes) -> None:
+        """Save the poster image to /config/www/ for unauthenticated access.
+
+        The image is then available at:
+          http://<HA_IP>:8123/local/movie_night_poster.png
+        This allows smart TVs and other devices to fetch it without auth.
+        """
+        try:
+            await self._hass.async_add_executor_job(
+                self._public_image_path.write_bytes, image_data
+            )
+        except Exception:
+            _LOGGER.debug("Failed to save public poster image", exc_info=True)
 
     @property
     def is_on(self) -> bool:
