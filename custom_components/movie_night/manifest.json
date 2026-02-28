@@ -1,0 +1,13 @@
+{
+  "domain": "movie_night",
+  "name": "Movie Night",
+  "version": "1.0.0",
+  "codeowners": [],
+  "config_flow": true,
+  "single_config_entry": true,
+  "dependencies": ["frontend", "http"],
+  "documentation": "https://github.com/movie-night-ha/movie-night",
+  "iot_class": "cloud_polling",
+  "requirements": ["Pillow"],
+  "integration_type": "service"
+}

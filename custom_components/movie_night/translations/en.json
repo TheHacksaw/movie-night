@@ -1,0 +1,40 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "TMDB API Configuration",
+        "description": "Enter your TMDB API key and select your country for Netflix catalog browsing. Get a free API key at themoviedb.org.",
+        "data": {
+          "api_key": "TMDB API Key",
+          "country": "Country"
+        }
+      },
+      "apple_tv": {
+        "title": "Apple TV (Optional)",
+        "description": "Optionally select a media player entity for Netflix playback. You can skip this step.",
+        "data": {
+          "apple_tv_entity": "Apple TV / Media Player Entity"
+        }
+      }
+    },
+    "error": {
+      "invalid_api_key": "Invalid TMDB API key. Please check and try again.",
+      "cannot_connect": "Unable to connect to TMDB. Check your network connection."
+    },
+    "abort": {
+      "already_configured": "Movie Night is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Movie Night Options",
+        "data": {
+          "country": "Country",
+          "apple_tv_entity": "Apple TV / Media Player Entity",
+          "poll_interval": "Catalog refresh interval"
+        }
+      }
+    }
+  }
+}

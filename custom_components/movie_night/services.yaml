@@ -1,0 +1,56 @@
+select_title:
+  name: Select Title
+  description: Select a movie or TV show as the current "Now Playing" title.
+  fields:
+    tmdb_id:
+      name: TMDB ID
+      description: The TMDB ID of the movie or TV show.
+      required: true
+      example: "550"
+      selector:
+        text:
+    content_type:
+      name: Content Type
+      description: Whether this is a movie or TV show.
+      required: true
+      default: "movie"
+      example: "movie"
+      selector:
+        select:
+          options:
+            - label: Movie
+              value: movie
+            - label: TV Show
+              value: tv
+
+search:
+  name: Search
+  description: Search the Netflix catalog for movies and TV shows.
+  fields:
+    query:
+      name: Search Query
+      description: The search term to look for.
+      required: true
+      example: "Stranger Things"
+      selector:
+        text:
+
+start_playback:
+  name: Start Playback
+  description: Launch Netflix on the configured Apple TV and attempt to open the current title.
+
+show_poster:
+  name: Show Poster
+  description: Cast the "Now Playing" poster image to a media player (TV, Chromecast, etc.).
+  fields:
+    target_entity:
+      name: Target Media Player
+      description: The media player entity to display the poster on.
+      required: true
+      selector:
+        entity:
+          domain: media_player
+
+clear:
+  name: Clear
+  description: Clear the current selection and return to idle.
